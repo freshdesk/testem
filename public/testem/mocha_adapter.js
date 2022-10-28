@@ -8,10 +8,12 @@ Testem`s adapter for Mocha. It works by monkey-patching `Runner.prototype.emit`.
 */
 
 /* globals mocha, emit, Mocha */
+/* globals module */
 /* exported mochaAdapter */
 'use strict';
 
 function mochaAdapter() {
+
   var results = {
     failed: 0,
     passed: 0,
@@ -45,6 +47,7 @@ function mochaAdapter() {
 
   var oEmit = Runner.prototype.emit;
   Runner.prototype.emit = function(evt, test, err) {
+    var name = getFullName(test);
     if (evt === 'start') {
       emit('tests-start');
     } else if (evt === 'end') {
@@ -53,14 +56,11 @@ function mochaAdapter() {
       }
       ended = true;
     } else if (evt === 'test end') {
-      var name = getFullName(test);
       waiting++;
       _setTimeout(function() {
         waiting--;
         if (test.state === 'passed') {
           testPass(test);
-        } else if (test.state === 'failed') {
-          testFail(test, err);
         } else if (test.pending) {
           testPending(test);
         }
@@ -69,7 +69,7 @@ function mochaAdapter() {
         }
       }, 0);
     } else if (evt === 'fail') {
-      test.err = test.err || err;
+      testFail(test, err);
     }
 
     oEmit.apply(this, arguments);
@@ -136,4 +136,9 @@ function mochaAdapter() {
     }
   };
 
+}
+
+// Exporting this as a module so that it can be unit tested in Node.
+if (typeof module !== 'undefined') {
+  module.exports = mochaAdapter;
 }

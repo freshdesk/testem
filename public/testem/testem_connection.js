@@ -1,5 +1,4 @@
-/* globals document, parent, window, io, navigator, decycle */
-/* globals TestemConnection */
+/* globals document, parent, window, io, navigator */
 'use strict';
 
 var socket;
@@ -21,7 +20,12 @@ function serializeMessage(message) {
 }
 
 function deserializeMessage(message) {
-  return JSON.parse(message);
+  try {
+    return JSON.parse(message);
+  } catch (error) {
+    console.error('Testem: Error deserializing message:', message);
+    return {};
+  }
 }
 
 function sendMessageToParent(type, data) {
@@ -146,7 +150,7 @@ function init() {
 
       addListener(window, 'load', initUI);
       addMessageListener('emit-message', function(item) {
-        TestemConnection.emit.apply(null, item);
+        socket.emit.apply(socket, item);
       });
 
       sendMessageToParent('iframe-ready');
@@ -169,20 +173,9 @@ function initSocket(id) {
   socket.on('tap-all-test-results', function() {
     sendMessageToParent('tap-all-test-results');
   });
+  socket.on('stop-run', function() {
+    sendMessageToParent('stop-run');
+  });
 }
-
-window.TestemConnection = {
-  emit: function() {
-    var args = Array.prototype.slice.apply(arguments);
-
-    // Workaround IE 8 max instructions
-    setTimeout(function() {
-      var decycled = decycle(args);
-      setTimeout(function() {
-        socket.emit.apply(socket, decycled);
-      }, 0);
-    }, 0);
-  }
-};
 
 init();

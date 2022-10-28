@@ -67,7 +67,7 @@ Now open your browser and go to the specified URL. You should now see
 ![Zero of zero](https://github.com/testem/testem/raw/master/images/zeros.png)
 
 We see 0/0 for tests because at this point we haven't written any code. As we write them, Testem will pick up any `.js` files
-that were added, include them, and if there are tests, run them automatically. So let's first write `hello_spec.js` in the spirit of "test first"(written in Jasmine)
+that were added, include them, and if there are tests, run them automatically. So let's first write `hello_spec.js` in the spirit of "test first" (written in Jasmine)
 
 ```javascript
 describe('hello', function(){
@@ -141,6 +141,7 @@ Will print them out. The output might look like
     Chrome
     Firefox
     Safari
+    Safari Technology Preview
     Opera
     PhantomJS
 
@@ -161,9 +162,19 @@ TAP is a human-readable and language-agnostic test result format. TAP plugins ex
 * [Jenkins TAP plugin](https://wiki.jenkins-ci.org/display/JENKINS/TAP+Plugin) - I've added [detailed instructions](https://github.com/testem/testem/blob/master/docs/use_with_jenkins.md) for setup with Jenkins.
 * [TeamCity TAP plugin](https://github.com/pavelsher/teamcity-tap-parser)
 
+## TAP Options
+
+By default, the TAP reporter outputs logs from all tests that emit logs. You can disable this behavior and only emit logs for failed tests using:
+
+```json
+{
+  "tap_quiet_logs": true
+}
+```
+
 ## Other Test Reporters
 
-Testem has other test reporters than TAP: `dot`, `xunit` and `teamcity`. You can use the `-R` to specify them
+Testem has other test reporters besides TAP: `dot`, `xunit` and `teamcity`. You can use the `-R` to specify them
 
     testem ci -R dot
 
@@ -234,7 +245,7 @@ The `src_files` can also be unix glob patterns.
 ```
 
 You can also ignore certain files using `src_files_ignore`.
-***Update: I've removed the ability to use a space-separated list of globs as a string in the src_files property because it disallowed matching files or directories with spaces in them.***
+***Update: I've removed the ability to use a space-separated list of globs as a string in the `src_files` property because it disallowed matching files or directories with spaces in them.***
 
 ```json
 {
@@ -255,7 +266,10 @@ You can also use a custom page for testing. To do this, first you need to specif
 
 ```json
 {
-  "test_page": "tests.html"
+  "test_page": "tests.html",
+  "launch_in_dev": [
+    "Chrome"
+  ]
 }
 ```
 
@@ -263,7 +277,7 @@ Next, the test page you use needs to have the adapter code installed on them, as
 
 ### Include Snippet
 
-Include this snippet directly after your `jasmine.js`, `qunit.js` or `mocha.js` or `buster.js` include to enable *Testem* with your test page.
+Include this snippet directly after your `jasmine.js`, `qunit.js` or `mocha.js` or `buster.js` scripts to enable *Testem* with your test page.
 
 ```html
 <script src="/testem.js"></script>
@@ -275,7 +289,7 @@ Or if you are using require.js or another loader, just make sure you load `/test
 
 ### Dynamic Substitution
 
-To enable dynamically substituting in the Javascript files in your custom test page, you must
+To enable dynamic substitutions within the Javascript files in your custom test page, you must
 
 1. name your test page using `.mustache` as the extension
 2. use `{{#serve_files}}` to loop over the set of Javascript files to be served, and then reference its `src` property to access their path (or `{{#css_files}}` for stylesheets)
@@ -324,7 +338,24 @@ This will display something like the following
     Opera         browser       ✔
     Mocha         process(TAP)  ✔
 
-This displays the current list of launchers that are available. Launchers can launch either a browser or a custom process &mdash; as shown in the "Type" column. Custom launchers can be defined to launch custom processes. The "CI" column indicates the launchers which will be automatically launch in CI-mode. Similarly, the "Dev" column those that will automatically launch in dev-mode.
+This displays the current list of launchers that are available. Launchers can launch either a browser or a custom process &mdash; as shown in the "Type" column. Custom launchers can be defined to launch custom processes. The "CI" column indicates the launchers which will be automatically launched in CI-mode. Similarly, the "Dev" column lists those that will automatically launch in dev-mode.
+
+Customizing Browser Arguments
+-----------------------------
+
+Testem passes its own list of arguments to some of the browsers it launches. You can add your own custom arguments to these lists by including the `browser_args` option in your Testem configuration. For example:
+
+```javascript
+"browser_args": {
+  "Chrome": [
+    "--auto-open-devtools-for-tabs"
+  ]
+}
+```
+
+You can supply arguments to any number of browsers Testem has available by using the launcher name as a key in `browser_args`. Values may be an array of string arguments, a single string, or an object specifying `args` and a `mode` to apply them to.
+
+Read [more details](docs/browser_args.md) about the browser argument options.
 
 Running Tests in Node and Custom Process Launchers
 --------------------------------------------------
@@ -376,6 +407,9 @@ If you want to use any of the [PhantomJS command line options](http://phantomjs.
 ]
 ```
 
+You can also customize the phantomjs launcher file by specifying the `phantomjs_launch_script` option.
+In this launcher you can change options like the `viewPortSize`. See `assets/phantom.js` for the default launcher.
+
 Preprocessors (CoffeeScript, LESS, Sass, Browserify, etc)
 ---------------------------------------------------------
 
@@ -399,7 +433,7 @@ Since you want to be serving the `.js` files that are generated and not the `.co
 ]
 ```
 
-Testem will throw up a big ol' error dialog if the preprocessor command exits with an error code, so code checkers like jshint can used here as well.
+Testem will throw up a big ol' error dialog if the preprocessor command exits with an error code, so code checkers like jshint can be used here as well.
 
 If you need to run a command after your tests have completed (such as removing compiled `.js` files), use the `after_tests` option.
 
@@ -411,11 +445,10 @@ If you would prefer simply to clean up when Testem exits, you can use the `on_ex
 
 Running browser code after tests complete
 -------------
-It is possible to send coverage reports or run other javascript in the browser by using the `afterTests` method.
+It is possible to send coverage reports or run other JavaScript in the browser by using the `afterTests` method.
 
 ```javascript
 Testem.afterTests(
-  //Asynchronously
   function(config, data, callback) {
     var coverage = window.__coverage__;
     var postBody = JSON.stringify(coverage);
@@ -430,9 +463,6 @@ Testem.afterTests(
         xhr.send(postBody);
     }
 });
-
-//Synchronously
-Testem.afterTests(doStuff);
 ```
 
 
@@ -449,7 +479,7 @@ Sometimes you may want to re-map a URL to a different directory on the file syst
     + public
       + tests.html
 
-Let's say you want to serve `tests.html` at the top level url `/tests.html`, all the Javascripts under `/js` and all the css under `/css` you can use the "routes" option to do that
+Let's say you want to serve `tests.html` at the top level url `/tests.html`, all the Javascripts under `/js` and all the css under `/css`. You can use the "routes" option to do that
 
 ```javascript
 "routes": {
@@ -470,7 +500,7 @@ Then, to use it, in your config file simply set
 "framework": "custom"
 ```
 
-And then make sure you include the adapter code in your test suite and you are ready to go. Here for the [full example](https://github.com/testem/testem/tree/master/examples/custom_adapter).
+And then make sure you include the adapter code in your test suite and you are ready to go. See here for the [full example](https://github.com/testem/testem/tree/master/examples/custom_adapter).
 
 Native notifications
 --------------------------------
@@ -480,7 +510,7 @@ If you'd prefer not to be looking at the terminal while developing, you can enab
 API Proxy
 --------------------------------
 
-The proxy option allows you to transparently forward http requests to an external endpoint.
+The proxy option allows you to transparently forward HTTP requests to an external endpoint.
 
 Simply add a `proxies` section to the `testem.json` configuration file.
 
@@ -499,8 +529,8 @@ Simply add a `proxies` section to the `testem.json` configuration file.
 }
 ```
 
-This functionality is implemented as a *transparent proxy* hence a request to
-`http://localhost:7357/api/posts.json` will be proxied to `http://localhost:4200/api/posts.json` without removing the `/api` prefix. Setting the `secure` option to false as in the above `/xmlapi` configuration block will ignore TLS certificate validation and allow tests to successfully reach that URL even if testem was launched over http. Other available options can be found here: https://github.com/nodejitsu/node-http-proxy#options
+This functionality is implemented as a *transparent proxy*, hence a request to
+`http://localhost:7357/api/posts.json` will be proxied to `http://localhost:4200/api/posts.json` without removing the `/api` prefix. Setting the `secure` option to `false` as in the above `/xmlapi` configuration block will ignore TLS certificate validation and allow tests to successfully reach that URL even if testem was launched over HTTP. Other available options can be found here: https://github.com/nodejitsu/node-http-proxy#options
 
 To limit the functionality to only certain content types, use "onlyContentTypes".
 
@@ -530,7 +560,7 @@ I've created [examples](https://github.com/testem/testem/tree/master/examples/) 
 Known Issues
 ------------
 
-1. On Windows, Mocha fails to run under Testem due to an [issue](https://github.com/joyent/node/issues/3871) in Node core. Until that gets resolved, I've made a [workaround](https://github.com/airportyh/mocha/tree/windowsfix) for mocha. To install this fork of Mocha, do
+1. On Windows, Mocha fails to run under Testem due to an [issue](https://github.com/joyent/node/issues/3871) in Node core. Until that gets resolved, I've made a [workaround](https://github.com/airportyh/mocha/tree/windowsfix) for Mocha. To install this fork of Mocha, do
 
         npm install https://github.com/airportyh/mocha/tarball/windowsfix -g
 
@@ -560,7 +590,7 @@ Community
 Credits
 -------
 
-Testem depends on these great software
+Testem depends on the following great software
 
 * [Jasmine](http://jasmine.github.io/)
 * [QUnit](http://code.google.com/p/jqunit/)
